@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: health-check-demo
+
+  # Testcontainers가 자동으로 설정하므로 datasource URL 불필요
+  # @ServiceConnection 어노테이션이 컨테이너 정보를 자동 주입
+
+logging:
+  level:
+    com.healthcheckdemo: DEBUG
+    org.testcontainers: INFO

@@ -1,0 +1,173 @@
+# Docker Compose 버전 3.8 사용
+version: '3.8'
+
+# Services
+# 각 서비스는 독립적인 컨테이너로 실행됨
+services:
+
+  # 데이터베이스 서버 (RDB)
+  mysql:
+    # Docker Hub에서 MySQL 8.0 공식 이미지 사용
+    image: mysql:8.0
+
+    # 컨테이너 이름 지정 (docker ps 등에서 보이는 이름)
+    container_name: health-check-mysql
+
+    # 포트 매핑: "호스트포트:컨테이너포트"
+    # 호스트 3307 포트로 접속하면 → 컨테이너 내부 3306 포트로 연결
+    # 3307 사용 이유: 로컬에 이미 MySQL이 3306 포트를 사용 중일 수 있음
+    # 클라우드 환경에서 3307 inbound를 열 필요는 없음 -> 내부적으로 격리된 환경이기 때문
+    ports:
+      - "3307:3306"
+
+    # 환경 변수 설정 (MySQL 초기 설정)
+    environment:
+      # root 사용자의 비밀번호 (관리자 계정)
+      MYSQL_ROOT_PASSWORD: 1234
+
+      # 자동 생성할 데이터베이스 이름
+      # 컨테이너 첫 실행 시 자동으로 'healthcheck' DB 생성
+      MYSQL_DATABASE: healthcheck
+
+      # 애플리케이션용 사용자 생성
+      # 이 사용자는 'healthcheck' DB에만 접근 가능 (보안 강화)
+      MYSQL_USER: healthcheck
+      MYSQL_PASSWORD: healthcheck123
+
+    # 볼륨 마운트 (데이터 영구 저장)
+    # 컨테이너 삭제해도 데이터 유지됨
+    # mysql-data 볼륨 → 컨테이너의 /var/lib/mysql 디렉토리에 마운트
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+    # 헬스체크 설정 (MySQL Container 정상 작동 확인용)
+    healthcheck:
+      # mysqladmin ping 명령으로 MySQL 서버 응답 확인
+      # -h: 호스트, -u: 사용자, -p: 비밀번호
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+
+      # interval: 10초마다 헬스체크 실행
+      interval: 10s
+
+      # timeout: 5초 이내에 응답 없으면 실패로 간주
+      timeout: 5s
+
+      # retries: 5번 연속 실패하면 unhealthy 상태로 판정
+      # 약 50초동안 테스트 했는데도 로드 안되면 안되는 상태로 간주함
+      retries: 5
+
+    # 재시작 정책
+    # unless-stopped: 수동으로 중지하지 않는 한 항상 재시작
+    restart: unless-stopped
+
+  # 인메모리 DB (캐시, 분산 락, 세션 정보 등..)
+  redis:
+    # Redis 7 Alpine 이미지 (경량 버전)
+    image: redis:7-alpine
+
+    container_name: health-check-redis
+
+    # Redis 기본 포트 6379
+    # "6379:6379" = 호스트 6379 포트 → 컨테이너 6379 포트
+    # MySQL 처럼 포트 우회 -> 로컬에 존재할 수 있음
+    ports:
+      - "6380:6379"
+
+    # Redis 데이터 영구 저장
+    # redis-data 볼륨 → 컨테이너의 /data 디렉토리에 마운트
+    volumes:
+      - redis-data:/data
+
+    # Redis 헬스체크
+    healthcheck:
+      # redis-cli ping 명령으로 Redis 서버 응답 확인
+      # 정상이면 "PONG" 응답
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
+
+  # Spring boot 애플리케이션
+  health-check-demo:
+    # 이미지를 직접 다운로드하지 않고 Dockerfile로 빌드
+    build:
+      # context: Dockerfile이 있는 디렉토리
+      context: .
+      # 사용할 Dockerfile 이름
+      dockerfile: Dockerfile
+
+    # 빌드된 이미지 이름과 태그
+    image: health-check-demo:latest
+
+    container_name: health-check-demo
+
+    # Spring Boot 기본 포트 8080
+    # "8080:8080" = 호스트 8080 포트 → 컨테이너 8080 포트
+    # 브라우저에서 localhost:8080으로 접속 가능
+    ports:
+      - "8080:8080"
+
+    # Spring Boot 애플리케이션 환경 변수
+    environment:
+      # Spring Profile 설정 (prod 환경으로 실행)
+      - SPRING_PROFILES_ACTIVE=prod
+
+      # MySQL 연결 설정
+      # jdbc:mysql://mysql:3306/healthcheck
+      # 컨테이너 내부에서는 3306 포트 사용 (3307 아님!)
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/healthcheck?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=healthcheck
+      - SPRING_DATASOURCE_PASSWORD=healthcheck123
+
+      # Redis 연결 설정
+      # 'redis'는 위에서 정의한 서비스 이름
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+
+    # 의존성 설정 (시작 순서 제어)
+    # MySQL과 Redis가 healthy 상태가 된 후에 이 컨테이너 시작
+    depends_on:
+      mysql:
+        # MySQL 헬스체크가 성공할 때까지 대기
+        condition: service_healthy
+      redis:
+        # Redis 헬스체크가 성공할 때까지 대기
+        condition: service_healthy
+
+    restart: unless-stopped
+
+# Volumes (볼륨 정의)
+# 데이터 영구 저장소
+# 컨테이너를 삭제(docker-compose down)해도 볼륨 데이터는 유지됨
+# 볼륨까지 삭제하려면: docker-compose down -v
+volumes:
+  # MySQL 데이터 저장 볼륨
+  mysql-data:
+
+  # Redis 데이터 저장 볼륨
+  redis-data:
+
+# 실행 방법
+# 1. 모든 서비스 시작:
+#    docker-compose up -d
+#
+# 2. 특정 서비스만 시작:
+#    docker-compose up -d mysql redis
+#
+# 3. 로그 확인:
+#    docker-compose logs -f health-check-demo
+#
+# 4. 서비스 상태 확인:
+#    docker-compose ps
+#
+# 5. 모든 서비스 중지:
+#    docker-compose down
+#
+# 6. 볼륨까지 삭제 (데이터 완전 삭제):
+#    docker-compose down -v
+#
+# 7. 이미지 재빌드:
+#    docker-compose build
+#    docker-compose up -d --build
