@@ -1,4 +1,4 @@
-package com.healthcheckdemo.cucumber.config;
+package com.healthcheckdemo.acceptance.config;
 
 import com.healthcheckdemo.config.TestcontainersConfiguration;
 import io.cucumber.spring.CucumberContextConfiguration;

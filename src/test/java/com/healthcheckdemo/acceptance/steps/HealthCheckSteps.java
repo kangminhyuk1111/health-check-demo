@@ -1,4 +1,4 @@
-package com.healthcheckdemo.cucumber.steps;
+package com.healthcheckdemo.acceptance.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

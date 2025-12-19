@@ -14,3 +14,7 @@ spring:
     redis:
       host: localhost
       port: 6379
+
+# 환경 구분 변수
+app:
+  environment: ${SPRING_PROFILES_ACTIVE:local}
