@@ -1,6 +1,5 @@
 name: CI
 
-# Trigger 조건: main 브랜치에 push하거나 PR이 생성될 때 실행
 on:
   push:
     branches: [ main ]
@@ -9,15 +8,12 @@ on:
 
 jobs:
   test:
-    # GitHub의 Ubuntu 최신 Runner 사용 (Docker가 기본 설치되어 있어 Testcontainers 실행 가능)
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: 코드 체크아웃
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Java 17 설치
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -25,15 +21,23 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # Step 3: Gradle Wrapper 실행 권한 부여
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      # Step 4: BDD/Testcontainers 테스트 실행
       - name: Run tests
         run: ./gradlew test
+        continue-on-error: true  # ⭐ 테스트 실패해도 다음 스텝 실행
 
-      # Step 5: 테스트 결과 아티팩트 업로드 (실패 시에도 결과 확인 가능)
+      # ⭐ 새로 추가: JUnit 리포트 게시
+      - name: Publish Test Report
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()  # 성공/실패 상관없이 항상 실행
+        with:
+          files: build/test-results/test/*.xml
+          check_name: 'Unit Test Results'
+          comment_title: 'Test Report'
+
+      # 기존: 아티팩트 업로드
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
