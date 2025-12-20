@@ -1,5 +1,10 @@
 name: CI
 
+permissions:
+  contents: read
+  checks: write        # ← Check Run 생성 권한
+  pull-requests: write # ← PR에 댓글 달기 권한
+
 on:
   push:
     branches: [ main ]
