@@ -15,6 +15,16 @@ spring:
       host: localhost
       port: 6379
 
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: health-check-demo-group
+      auto-offset-reset: earliest
+
 # 환경 구분 변수
 app:
   environment: ${SPRING_PROFILES_ACTIVE:local}

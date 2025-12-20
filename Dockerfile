@@ -1,14 +1,18 @@
-FROM gradle:8.0-jdk17 AS builder
+# 1단계: 빌드 스테이지
+FROM eclipse-temurin:17-jdk-jammy AS builder
 
 WORKDIR /app
 
 COPY . .
 
-# 테스트 제외하고 빌드
-RUN gradle build -x test --no-daemon
+# gradlew 실행 권한 추가
+RUN chmod +x ./gradlew
 
-# 최종 이미지
-FROM openjdk:17-jdk-slim
+# 테스트 제외하고 빌드
+RUN ./gradlew build -x test --no-daemon
+
+# 2단계: 최종 이미지
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
