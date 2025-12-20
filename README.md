@@ -1,6 +1,6 @@
 # Health Check Demo
 
-Spring Boot + MySQL + Redis 헬스체크 시스템
+Spring Boot + MySQL + Redis + Kafka 헬스체크 시스템
 
 ---
 
@@ -24,9 +24,9 @@ curl http://localhost:8080/health
 ```
 
 테스트 실행 시:
-- MySQL, Redis 컨테이너 자동 생성 (Testcontainers)
+- MySQL, Redis, Kafka 컨테이너 자동 생성 (Testcontainers)
 - 모든 테스트가 같은 컨테이너 재사용 (빠른 실행)
-- 시나리오마다 DB/Redis 자동 초기화
+- 시나리오마다 DB/Redis/Kafka 자동 초기화
 
 ---
 
@@ -40,5 +40,5 @@ curl http://localhost:8080/health
 
 - Java 17
 - Spring Boot 3.4.0
-- MySQL 8.0, Redis 7
+- MySQL 8.0, Redis 7, Kafka MQ
 - Cucumber, Testcontainers
