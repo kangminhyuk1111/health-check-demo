@@ -23,28 +23,6 @@ public class HealthCheckService implements HealthCheckUseCase {
         this.kafkaConnectionPort = kafkaConnectionPort;
     }
 
-    // @PostConstruct - 객체 생성이 끝난 이후 실행 (Spring Bean 생성 완료 후)
-    @PostConstruct
-    public void verifyConnections() {
-        List<String> failedConnections = new ArrayList<>();
-
-        if (!databaseConnectionPort.isConnected()) {
-            failedConnections.add(databaseConnectionPort.getConnectionName());
-        }
-        if (!redisConnectionPort.isConnected()) {
-            failedConnections.add(redisConnectionPort.getConnectionName());
-        }
-
-        if (!kafkaConnectionPort.isConnected()) {
-            failedConnections.add(kafkaConnectionPort.getConnectionName());
-        }
-
-        if (!failedConnections.isEmpty()) {
-            throw new IllegalStateException(
-                    "연결 실패: " + String.join(", ", failedConnections));
-        }
-    }
-
     @Override
     public String checkHealth() {
         return "OK";
